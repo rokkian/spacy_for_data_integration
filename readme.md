@@ -1,7 +1,6 @@
 # SpaCy for data integration
 
 As part of my university course Informative Systems and Semntic Web I developed this project with the aim to test the potentialities of advanced NLP tools (SpaCy) in the field of data integration, especially for solving issues related to:
-
 	- Schema Matching (SM)
 	
 	- Entity Matching (EM)
