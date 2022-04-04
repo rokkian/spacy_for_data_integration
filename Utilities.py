@@ -238,13 +238,13 @@ def Top1(MT):
 
 def TopK(MT, K=2, AoB='A'):
     """ Assegna a ogni colonna le top k colonne più simili """
-      CMT=deepcopy(MT)
+    CMT=deepcopy(MT)
 
-      CMT['RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
-                 .groupby([AoB]) \
-                 .cumcount() + 1
+    CMT['RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
+             .groupby([AoB]) \
+             .cumcount() + 1
 
-      return CMT[(CMT.RowNo<=K)].drop('RowNo', 1).sort_values(['A', 'sim'], ascending=[True, False])
+    return CMT[(CMT.RowNo<=K)].drop('RowNo', 1).sort_values(['A', 'sim'], ascending=[True, False])
 
 def StableMarriage(MatchTable, threshold=0, full=False):
     """ Assegna a ogni colonna la colonna che ha maggiore similarità senza avere altre colonne più simili """
