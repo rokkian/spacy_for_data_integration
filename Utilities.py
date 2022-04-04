@@ -13,8 +13,9 @@ from copy import deepcopy
 from pulp import *      # dovrebbe essere una libreria per l'ottimizzazione lineare
 import seaborn as sns; sns.set_theme()
 
-#funzione per trasformare il DataFrame in un dict di documenti
 def dataframeInDocs(df, verbose=False):
+    """ Ritorna il dataframe passato come dizionario di documenti """
+    
     docs = {}
     for col in df.columns:
         docs.update({col : ' '.join(list(df[col]))})
@@ -22,8 +23,9 @@ def dataframeInDocs(df, verbose=False):
         print(f'Creato dict di documenti con {len(docs.keys())} attributi: {list(docs.keys())}')
     return docs
 
-#funzione per campionare i record che non hanno nan
 def sampleDF_clean(df:pd.DataFrame, size=100):
+    """ Ritorna un sampling di size records del dataframe passato """
+    
     #Righe che non hanno elementi 'nan' in alcuna colonna
     if size >= df.shape[0]:
         return df
@@ -37,20 +39,21 @@ def sampleDF_clean(df:pd.DataFrame, size=100):
     sample = df.sample(size)
     return sample
 
-#Funzione di calcolo della ricchezza semantica
 def lexicalRichness(doc: spacy.tokens.doc.Doc):
+    """ ritorna la ricchezza semantica di un documento """
     return len(set([w.text for w in doc]))/len([w.text for w in doc])
 
 def preprocessingNLTK(text):
-    #cerca di rimuovere le stop words
+    """ Ritorna il testo passato senza le stop words """
     tokens = word_tokenize(text)
     cell_tokens_wo_sw = [word for word in tokens if word not in stopwords.words()]
     return ' '.join(cell_tokens_wo_sw)
 
 #----------------------------Classi ------------------------------------------------------------
 
-#Classe del singolo documento
 class Doc:
+    """ Classe del singolo documento """
+    
     name = ""
     text = ""
     semanticRichness = 0
@@ -86,9 +89,11 @@ class Doc:
         if self.prep:
             print(f'Preprocessing con riduzione al {self.reduction_preprocessing}%')
 
-#Classe di uno schema di documenti 
-#       lista dei modelli: (en_core_web_sm('small'), en_core_web_md('medium'), en_core_web_lg('large')), vectors(en_vectors_web_lg)
 class SchemaDoc:
+    """ Classe di uno schema di documenti 
+    
+    lista dei modelli: (en_core_web_sm('small'), en_core_web_md('medium'), en_core_web_lg('large')), vectors(en_vectors_web_lg)
+    """
 
     def __init__(self, df, sep=' ', nlp=spacy.load("en_core_web_sm"), pre=False, verbose=False):
         nlp.max_length = 1e7        #imposta la massima dimensione del singolo testo
@@ -112,15 +117,19 @@ class SchemaDoc:
         return self.docs_
 
     def doNLPs(self, model=spacy.load("en_core_web_sm"), verbose=False):
-        """Metodo da utilizzare per applicare il modello a tutti i Doc"""
+        """ Metodo da utilizzare per applicare il modello a tutti i Doc """
+        
         for doc in self.docs_:
             if verbose:
                 print(f"Doing NLP of {doc}")
             getattr(self, doc).doNLP(model)
+            
         if verbose:
             print("Fine NLPs")
 
     def getDictDocumenti(self):
+        """ Metodo che ritorna il dizionario dei documenti dello schema """
+        
         d = {}
         for doc in self.docs_:
             d.update({doc : getattr(self, doc)})
@@ -142,6 +151,8 @@ class SchemaDoc:
     #return lev.get_sim_score(preprocess_s(x['A']), preprocess_s(x['B'])
 
 def SimilarityTable(A:SchemaDoc,B:SchemaDoc):
+    """ Ritorna i valori di similarity table tra due SchemaDoc """
+    
     DA=pd.DataFrame({'A': A.docs_})
     DB=pd.DataFrame({'B': B.docs_})
     PCC = DA.assign(key=1).merge(DB.assign(key=1), on='key').drop('key', 1)
@@ -151,6 +162,8 @@ def SimilarityTable(A:SchemaDoc,B:SchemaDoc):
     return PCC
 
 def toSimMatrix(SimTable):
+    """ Ritorna la matrice di similarità corrispondente a una tabella di similarità """
+    
     A_label = SimTable.columns[0]
     B_label = SimTable.columns[1]
     A_Colonne=SimTable[A_label].drop_duplicates().values.tolist()
@@ -169,6 +182,8 @@ def toSimMatrix(SimTable):
     return SimMatrix
 
 def SimilarityMatrix(A:SchemaDoc,B:SchemaDoc):
+    """ Ritorna la matrice di similarità calcolata a partire da due SchemaDoc """
+    
     SimTable=SimilarityTable(A,B)
     A_Colonne=SimTable['A'].drop_duplicates().values.tolist()
     B_Righe=SimTable['B'].drop_duplicates().values.tolist()
@@ -188,6 +203,8 @@ def SimilarityMatrix(A:SchemaDoc,B:SchemaDoc):
 
 #-----------------Friend Function similarità tra SchemaDocs-------------------
 def similaritySchemadocs(sda:SchemaDoc, sdb:SchemaDoc):
+    """ Ritorna la similarità tra due schemadocs """
+    
     DA=pd.DataFrame({'A': sda.docs_})
     DB=pd.DataFrame({'B': sdb.docs_})
     PCC = DA.assign(key=1).merge(DB.assign(key=1), on='key').drop('key', 1)
@@ -205,28 +222,32 @@ def similaritySchemadocs(sda:SchemaDoc, sdb:SchemaDoc):
 
 #------------------Matching --------------------------------------------------
 def Top1(MT):
-  CMT=deepcopy(MT)
-  
-  CMT['A_RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
+    """ Assegna a ogni documento-colonna la corrispondente colonna-documento con maggiore similarità """
+
+    CMT=deepcopy(MT)
+
+    CMT['A_RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
              .groupby(['A']) \
              .cumcount() + 1
 
-  CMT['B_RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
+    CMT['B_RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
              .groupby(['B']) \
              .cumcount() + 1
 
-  return CMT[(CMT.A_RowNo==1) & (CMT.B_RowNo==1)].drop(['A_RowNo', 'B_RowNo'], 1).sort_values(['sim'], ascending=[False])
+    return CMT[(CMT.A_RowNo==1) & (CMT.B_RowNo==1)].drop(['A_RowNo', 'B_RowNo'], 1).sort_values(['sim'], ascending=[False])
 
 def TopK(MT, K=2, AoB='A'):
-  CMT=deepcopy(MT)
-  
-  CMT['RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
-             .groupby([AoB]) \
-             .cumcount() + 1
+    """ Assegna a ogni colonna le top k colonne più simili """
+      CMT=deepcopy(MT)
 
-  return CMT[(CMT.RowNo<=K)].drop('RowNo', 1).sort_values(['A', 'sim'], ascending=[True, False])
+      CMT['RowNo'] = CMT.sort_values(['sim'], ascending=[False]) \
+                 .groupby([AoB]) \
+                 .cumcount() + 1
+
+      return CMT[(CMT.RowNo<=K)].drop('RowNo', 1).sort_values(['A', 'sim'], ascending=[True, False])
 
 def StableMarriage(MatchTable, threshold=0, full=False):
+    """ Assegna a ogni colonna la colonna che ha maggiore similarità senza avere altre colonne più simili """
     MATCH = pd.DataFrame(columns=['A', 'B','sim'])
     MT=deepcopy(MatchTable)
     MT=MT.sort_values(['sim'], ascending=[False])
