@@ -150,6 +150,7 @@ def SimilarityTable(A:SchemaDoc,B:SchemaDoc):
     PCC['sim']=0         
     return PCC
 
+# da rivedere!!!
 def toSimMatrix(SimTable):
     A_label = SimTable.columns[0]
     B_label = SimTable.columns[1]
@@ -158,11 +159,12 @@ def toSimMatrix(SimTable):
   
     SimMatrix = pd.DataFrame(np.nan,columns=A_Colonne, index=B_Righe)
 
-    for col in A_Colonne:
-        for row in B_Righe:
-            s=SimTable[(SimTable[A_label]==col) &  (SimTable[B_label]==row)]['sim']
-            if not(s.empty):
-                SimMatrix[col][row]=s
+    
+    for i,col in enumerate(A_Colonne):
+        for j,row in enumerate(B_Righe):
+            s=SimTable[(SimTable[A_label]==col) &  (SimTable[B_label]==row)]['sim'].mean()
+
+            SimMatrix.loc[row, col]=s
 
     SimMatrix.columns.name = 'A'
     SimMatrix.index.name = 'B'
@@ -190,7 +192,7 @@ def SimilarityMatrix(A:SchemaDoc,B:SchemaDoc):
 def similaritySchemadocs(sda:SchemaDoc, sdb:SchemaDoc):
     DA=pd.DataFrame({'A': sda.docs_})
     DB=pd.DataFrame({'B': sdb.docs_})
-    PCC = DA.assign(key=1).merge(DB.assign(key=1), on='key').drop('key', 1)
+    PCC = DA.assign(key=1).merge(DB.assign(key=1), on='key').drop(columns='key', axis=1)
     PCC.columns=['A','B']
 
     ls = []
