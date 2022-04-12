@@ -100,7 +100,7 @@ class SchemaDoc:
         for doc in self.docs_:
             if verbose:
                 print(f'Creation doc {doc}')
-            setattr(self, doc, Doc(doc, sep.join(list(df[doc])), len(df[doc]), nlp, n_token_sep, pre=pre))
+            setattr(self, doc, Doc(doc, '"'+str(doc)+'": '+sep.join(list(df[doc])), len(df[doc]), nlp, n_token_sep, pre=pre))    # check
     
         if verbose:
             print('Fine SchemaDoc')
@@ -217,7 +217,7 @@ def Top1(MT):
              .groupby(['B']) \
              .cumcount() + 1
 
-  return CMT[(CMT.A_RowNo==1) & (CMT.B_RowNo==1)].drop(['A_RowNo', 'B_RowNo'], 1).sort_values(['sim'], ascending=[False])
+  return CMT[(CMT.A_RowNo==1) & (CMT.B_RowNo==1)].drop(['A_RowNo', 'B_RowNo'], axis=1).sort_values(['sim'], ascending=[False])
 
 def TopK(MT, K=2, AoB='A'):
   CMT=deepcopy(MT)
@@ -226,7 +226,7 @@ def TopK(MT, K=2, AoB='A'):
              .groupby([AoB]) \
              .cumcount() + 1
 
-  return CMT[(CMT.RowNo<=K)].drop('RowNo', 1).sort_values(['A', 'sim'], ascending=[True, False])
+  return CMT[(CMT.RowNo<=K)].drop('RowNo', axis=1).sort_values(['A', 'sim'], ascending=[True, False])
 
 def StableMarriage(MatchTable, threshold=0, full=False):
     MATCH = pd.DataFrame(columns=['A', 'B','sim'])
@@ -238,6 +238,7 @@ def StableMarriage(MatchTable, threshold=0, full=False):
             break
         x=R.iloc[0,:]
         MATCH=MATCH.append(x, ignore_index=True)
+        #MATCH=pd.DataFrame([MATCH, x]).reset_index(drop=True)
 
     #Aggiungo gli attributi senza corrispettivo (full join)
     if full:
