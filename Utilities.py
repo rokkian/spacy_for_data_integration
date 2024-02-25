@@ -105,7 +105,7 @@ class SchemaDoc:
         for doc in self.docs_:
             if verbose:
                 print(f'Creation doc {doc}')
-            setattr(self, doc, Doc(doc, sep.join(list(df[doc])), len(df[doc]), nlp, n_token_sep, pre=pre))
+            setattr(self, doc, Doc(doc, '"'+str(doc)+'": '+sep.join(list(df[doc])), len(df[doc]), nlp, n_token_sep, pre=pre))    # check
     
         if verbose:
             print('Fine SchemaDoc')
@@ -161,6 +161,7 @@ def SimilarityTable(A:SchemaDoc,B:SchemaDoc):
     PCC['sim']=0         
     return PCC
 
+# da rivedere!!!
 def toSimMatrix(SimTable):
     """ Ritorna la matrice di similarità corrispondente a una tabella di similarità """
     
@@ -171,11 +172,12 @@ def toSimMatrix(SimTable):
   
     SimMatrix = pd.DataFrame(np.nan,columns=A_Colonne, index=B_Righe)
 
-    for col in A_Colonne:
-        for row in B_Righe:
-            s=SimTable[(SimTable[A_label]==col) &  (SimTable[B_label]==row)]['sim']
-            if not(s.empty):
-                SimMatrix[col][row]=s
+    
+    for i,col in enumerate(A_Colonne):
+        for j,row in enumerate(B_Righe):
+            s=SimTable[(SimTable[A_label]==col) &  (SimTable[B_label]==row)]['sim'].mean()
+
+            SimMatrix.loc[row, col]=s
 
     SimMatrix.columns.name = 'A'
     SimMatrix.index.name = 'B'
@@ -207,7 +209,7 @@ def similaritySchemadocs(sda:SchemaDoc, sdb:SchemaDoc):
     
     DA=pd.DataFrame({'A': sda.docs_})
     DB=pd.DataFrame({'B': sdb.docs_})
-    PCC = DA.assign(key=1).merge(DB.assign(key=1), on='key').drop('key', 1)
+    PCC = DA.assign(key=1).merge(DB.assign(key=1), on='key').drop(columns='key', axis=1)
     PCC.columns=['A','B']
 
     ls = []
@@ -234,7 +236,9 @@ def Top1(MT):
              .groupby(['B']) \
              .cumcount() + 1
 
-    return CMT[(CMT.A_RowNo==1) & (CMT.B_RowNo==1)].drop(['A_RowNo', 'B_RowNo'], 1).sort_values(['sim'], ascending=[False])
+
+    return CMT[(CMT.A_RowNo==1) & (CMT.B_RowNo==1)].drop(['A_RowNo', 'B_RowNo'], axis=1).sort_values(['sim'], ascending=[False])
+
 
 def TopK(MT, K=2, AoB='A'):
     """ Assegna a ogni colonna le top k colonne più simili """
@@ -244,7 +248,9 @@ def TopK(MT, K=2, AoB='A'):
              .groupby([AoB]) \
              .cumcount() + 1
 
-    return CMT[(CMT.RowNo<=K)].drop('RowNo', 1).sort_values(['A', 'sim'], ascending=[True, False])
+
+    return CMT[(CMT.RowNo<=K)].drop('RowNo', axis=1).sort_values(['A', 'sim'], ascending=[True, False])
+
 
 def StableMarriage(MatchTable, threshold=0, full=False):
     """ Assegna a ogni colonna la colonna che ha maggiore similarità senza avere altre colonne più simili """
@@ -257,6 +263,7 @@ def StableMarriage(MatchTable, threshold=0, full=False):
             break
         x=R.iloc[0,:]
         MATCH=MATCH.append(x, ignore_index=True)
+        #MATCH=pd.DataFrame([MATCH, x]).reset_index(drop=True)
 
     #Aggiungo gli attributi senza corrispettivo (full join)
     if full:
